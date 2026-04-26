@@ -42,12 +42,12 @@ spec:
               valueFrom:
                 secretKeyRef:
                   name: mongodb-secret
-                  key: mongo-root-username
+                  key: MONGODB_USERNAME
             - name: MONGODB_PASSWORD
               valueFrom:
                 secretKeyRef:
                   name: mongodb-secret
-                  key: mongo-root-password
+                  key: MONGODB_PASSWORD
             - name: MONGODB_AUTHSOURCE
               valueFrom:
                 configMapKeyRef:
