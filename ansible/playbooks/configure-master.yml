@@ -61,7 +61,7 @@
         set -e
         microk8s kubectl create secret generic doppler-token \
           --namespace purely \
-          --from-literal=token={{ doppler_token }} \
+          --from-literal=serviceToken={{ doppler_token }} \
           --dry-run=client -o yaml | microk8s kubectl apply -f -
       args:
         executable: /bin/bash
