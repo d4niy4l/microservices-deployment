@@ -1,12 +1,12 @@
 # Stage 1: Build the application using Maven and JDK 21
-FROM amazoncorretto:21-alpine-jdk AS builder
+FROM maven:3.9-amazoncorretto-21 AS builder
 
-ARG CART_SERVICE_PORT=9060
+ARG CART_SERVICE_PORT=9000
 ARG SERVICE_REGISTRY_SERVICE_URL=http://localhost:8761/eureka/
 ARG SERVICE_REGISTRY_HOSTNAME=localhost
 ARG MONGODB_HOST=mongodb
 ARG MONGODB_PORT=27017
-ARG MONGODB_DATABASE=purely_auth_service
+ARG MONGODB_DATABASE=purely_cart_service
 ARG MONGODB_USERNAME=admin
 ARG MONGODB_PASSWORD=password
 ARG MONGODB_AUTHSOURCE=admin
@@ -20,7 +20,6 @@ ENV MONGODB_DATABASE=${MONGODB_DATABASE}
 ENV MONGODB_USERNAME=${MONGODB_USERNAME}
 ENV MONGODB_PASSWORD=${MONGODB_PASSWORD}
 ENV MONGODB_AUTHSOURCE=${MONGODB_AUTHSOURCE}
-RUN apk add maven
 WORKDIR /build
 # Copy only pom.xml first to leverage Docker cache
 COPY pom.xml .

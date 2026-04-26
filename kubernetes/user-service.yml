@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
         - name: user-service
-          image: registry.xcelerate.systems/devops-project/user-service:latest # Replace with your actual image name and tag
+          image: daniyalniggerman/user-service:latest
           ports:
             - containerPort: 9050
           env:

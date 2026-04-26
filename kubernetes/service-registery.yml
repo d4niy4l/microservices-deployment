@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
       - name: service-registry
-        image: registry.xcelerate.systems/devops-project/service-registry:latest
+        image: daniyalniggerman/service-registry:latest
         env:
           - name: SERVICE_REGISTRY_PORT
             valueFrom:
