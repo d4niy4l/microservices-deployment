@@ -5,6 +5,9 @@ exec > >(tee /var/log/user-data.log | logger -t user-data) 2>&1
 export DEBIAN_FRONTEND=noninteractive
 INSTANCE_DNS=$(curl -s http://169.254.169.254/latest/meta-data/public-hostname)
 DOPPLER_TOKEN='${doppler_token}'
+export PATH="/snap/bin:$PATH"
+export INSTANCE_DNS
+export DOPPLER_TOKEN
 
 sudo apt-get update -y
 sudo apt-get install -y software-properties-common python3-pip python3-apt curl
@@ -19,16 +22,19 @@ fi
 
 sudo mkdir -p /opt/bootstrap
 
-sudo tee /opt/bootstrap/playbook.yml > /dev/null <<PLAYBOOK_EOF
+sudo tee /opt/bootstrap/playbook.yml > /dev/null <<'PLAYBOOK_EOF'
 ---
 - name: Prepare node and install MicroK8s + ArgoCD + External Secrets Operator
   hosts: localhost
   connection: local
   become: true
 
+  environment:
+    PATH: "/snap/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+
   vars:
-    instance_dns: "$INSTANCE_DNS"
-    doppler_token: "$DOPPLER_TOKEN"
+    instance_dns: "{{ lookup('env', 'INSTANCE_DNS') }}"
+    doppler_token: "{{ lookup('env', 'DOPPLER_TOKEN') }}"
 
   tasks:
     - name: Update apt cache and upgrade packages
@@ -102,7 +108,10 @@ sudo tee /opt/bootstrap/playbook.yml > /dev/null <<PLAYBOOK_EOF
         executable: /bin/bash
 
     - name: Install ArgoCD manifests
-      ansible.builtin.command: microk8s kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+      ansible.builtin.command: microk8s kubectl create -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+      register: argocd_install
+      failed_when: argocd_install.rc != 0 and "AlreadyExists" not in argocd_install.stderr and "already exists" not in argocd_install.stderr
+      changed_when: "'created' in argocd_install.stdout"
 
     - name: Create purely namespace
       ansible.builtin.shell: |
@@ -111,8 +120,29 @@ sudo tee /opt/bootstrap/playbook.yml > /dev/null <<PLAYBOOK_EOF
       args:
         executable: /bin/bash
 
+    - name: Install Helm if missing
+      ansible.builtin.shell: |
+        set -e
+        if ! command -v helm >/dev/null 2>&1; then
+          snap install helm --classic
+        fi
+      args:
+        executable: /bin/bash
+
+    - name: Add External Secrets Helm repo
+      ansible.builtin.command: helm repo add external-secrets https://charts.external-secrets.io
+      register: eso_repo_add
+      failed_when: eso_repo_add.rc != 0 and "already exists" not in eso_repo_add.stderr
+      changed_when: "'has been added' in eso_repo_add.stdout"
+
+    - name: Update Helm repos
+      ansible.builtin.command: helm repo update
+      changed_when: false
+
     - name: Install External Secrets Operator
-      ansible.builtin.command: microk8s kubectl apply -f https://github.com/external-secrets/external-secrets/releases/latest/download/external-secrets.yaml
+      ansible.builtin.command: helm upgrade --install external-secrets external-secrets/external-secrets --namespace external-secrets --create-namespace
+      register: eso_install
+      changed_when: "'STATUS: deployed' in eso_install.stdout"
 
     - name: Wait for External Secrets Operator webhook
       ansible.builtin.command: microk8s kubectl -n external-secrets rollout status deploy/external-secrets-webhook --timeout=120s
