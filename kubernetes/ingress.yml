@@ -19,6 +19,20 @@ spec:
     - host: purely.com 
       http:
         paths:
+          - path: /api(/|$)(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: api-gateway
+                port:
+                  number: 8080
+          - path: /eureka(/|$)(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: service-registry
+                port:
+                  number: 8761
           - path: /
             pathType: Prefix
             backend:
