@@ -1,0 +1,25 @@
+spring:
+    application:
+        name: category-service
+    data:
+        mongodb:
+            host: ${MONGODB_HOST:mongodb}
+            port: ${MONGODB_PORT:27017}
+            database: ${MONGODB_DATABASE:purely_auth_service}
+            username: ${MONGODB_USERNAME:admin}
+            password: ${MONGODB_PASSWORD:password}
+            authentication-database: ${MONGODB_AUTHSOURCE:admin}
+    jpa:
+        hibernate:
+            ddl-auto: update
+
+server:
+    port: ${CATEGORY_SERVICE_PORT:9000}
+
+eureka:
+    client:
+        serviceUrl:
+            defaultZone: ${SERVICE_REGISTRY_SERVICE_URL:http://localhost:8761/eureka/}
+    instance:
+        hostname: ${SERVICE_REGISTRY_HOSTNAME:localhost}
+    
