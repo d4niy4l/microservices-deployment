@@ -6,6 +6,7 @@ services:
     build:
       context: ./auth-service
       dockerfile: Dockerfile
+      network: host
       args:
         - AUTH_SERVICE_PORT=${AUTH_SERVICE_PORT}
         - MONGODB_HOST=${MONGODB_HOST}
@@ -31,6 +32,7 @@ services:
     build:
       context: ./api-gateway
       dockerfile: Dockerfile
+      network: host
       args:
         - API_GATEWAY_PORT=${API_GATEWAY_PORT}
         - SERVICE_REGISTRY_SERVICE_URL=${SERVICE_REGISTRY_SERVICE_URL}
@@ -49,6 +51,7 @@ services:
     build:
       context: ./category-service
       dockerfile: Dockerfile
+      network: host
       args:
         - CATEGORY_SERVICE_PORT=${CATEGORY_SERVICE_PORT}
         - MONGODB_HOST=${MONGODB_HOST}
@@ -74,6 +77,7 @@ services:
     build:
       context: ./cart-service
       dockerfile: Dockerfile
+      network: host
       args:
         - CART_SERVICE_PORT=${CART_SERVICE_PORT}
         - MONGODB_HOST=${MONGODB_HOST}
@@ -98,6 +102,7 @@ services:
     build:
       context: ../frontend
       dockerfile: Dockerfile
+      network: host
     container_name: frontend-app
     ports:
     - ${FRONTEND_PORT}:80
@@ -152,6 +157,7 @@ services:
     build:
       context: ./notification-service
       dockerfile: Dockerfile
+      network: host
       args:
         - NOTIFICATION_SERVICE_PORT=${NOTIFICATION_SERVICE_PORT}
         - SMTP_SERVER_URL=${SMTP_SERVER_URL}
@@ -176,6 +182,7 @@ services:
     build:
       context: ./order-service
       dockerfile: Dockerfile
+      network: host
       args:
         - ORDER_SERVICE_PORT=${ORDER_SERVICE_PORT}
         - MONGODB_HOST=${MONGODB_HOST}
@@ -202,6 +209,7 @@ services:
     build:
       context: ./product-service
       dockerfile: Dockerfile
+      network: host
       args:
         - PRODUCT_SERVICE_PORT=${PRODUCT_SERVICE_PORT}
         - MONGODB_HOST=${MONGODB_HOST}
@@ -228,6 +236,7 @@ services:
     build:
       context: ./service-registry
       dockerfile: Dockerfile
+      network: host
       args:
         - SERVICE_REGISTRY_PORT=${SERVICE_REGISTRY_PORT}
     ports:
@@ -245,6 +254,7 @@ services:
     build:
       context: ./user-service
       dockerfile: Dockerfile
+      network: host
       args:
         - USER_SERVICE_PORT=${USER_SERVICE_PORT}
         - MONGODB_HOST=${MONGODB_HOST}

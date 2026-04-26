@@ -1,9 +1,8 @@
 # Stage 1: Build the application using Maven and JDK 21
-FROM amazoncorretto:21-alpine-jdk AS builder
+FROM maven:3.9-amazoncorretto-21 AS builder
 ARG SERVICE_REGISTRY_PORT=8761
 ENV SERVICE_REGISTRY_PORT=${SERVICE_REGISTRY_PORT}
 
-RUN apk add maven
 WORKDIR /build
 # Copy only pom.xml first to leverage Docker cache
 COPY pom.xml .

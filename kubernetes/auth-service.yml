@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
         - name: auth-service
-          image: registry.xcelerate.systems/devops-project/auth-service:latest #############################
+          image: daniyalniggerman/auth-service:latest
           ports:
             - containerPort: 9030
           env:

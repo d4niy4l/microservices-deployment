@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
         - name: product-service
-          image: registry.xcelerate.systems/devops-project/product-service:latest # Replace with your actual image name and tag
+          image: daniyalniggerman/product-service:latest
           ports:
             - containerPort: 9010
           env:

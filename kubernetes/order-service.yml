@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
         - name: order-service
-          image: registry.xcelerate.systems/devops-project/order-service:latest # Replace with your actual image name and tag
+          image: daniyalniggerman/order-service:latest
           ports:
             - containerPort: 9070
           env:

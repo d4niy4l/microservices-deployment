@@ -1,5 +1,5 @@
 # Stage 1: Build the application using Maven and JDK 21
-FROM amazoncorretto:21-alpine-jdk AS builder
+FROM maven:3.9-amazoncorretto-21 AS builder
 
 ARG API_GATEWAY_PORT=8080
 ARG SERVICE_REGISTRY_SERVICE_URL=http://localhost:8761/eureka/
@@ -9,7 +9,6 @@ ENV SERVICE_REGISTRY_SERVICE_URL=${SERVICE_REGISTRY_SERVICE_URL}
 ENV SERVICE_REGISTRY_HOSTNAME=${SERVICE_REGISTRY_HOSTNAME}
 ENV API_GATEWAY_PORT=${API_GATEWAY_PORT}
 
-RUN apk add maven
 WORKDIR /build
 # Copy only pom.xml first to leverage Docker cache
 COPY pom.xml .

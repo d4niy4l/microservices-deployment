@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
         - name: notification-service
-          image: registry.xcelerate.systems/devops-project/notification-service:latest #################################
+          image: daniyalniggerman/notification-service:latest
           ports:
             - containerPort: 9020
           env:
