@@ -37,7 +37,7 @@ spec:
                   name: purely-config
                   key: MONGODB_PORT
             - name: MONGODB_DATABASE
-              value: "purely_user_service"
+              value: "purely_auth_service"
             - name: MONGODB_USERNAME
               valueFrom:
                 secretKeyRef:

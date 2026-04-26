@@ -32,7 +32,8 @@ target/
 !**/src/test/**/target/
 
 /**/.env
-
+/kubernetes-old/*
+/charts/*
 
 # KUBERNETES
 /kubernetes/secrets.yaml
