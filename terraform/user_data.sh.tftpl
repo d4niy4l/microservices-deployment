@@ -3,6 +3,8 @@ set -euxo pipefail
 exec > >(tee /var/log/user-data.log | logger -t user-data) 2>&1
 
 export DEBIAN_FRONTEND=noninteractive
+INSTANCE_DNS=$(curl -s http://169.254.169.254/latest/meta-data/public-hostname)
+DOPPLER_TOKEN='${doppler_token}'
 
 sudo apt-get update -y
 sudo apt-get install -y software-properties-common python3-pip python3-apt curl
@@ -17,12 +19,16 @@ fi
 
 sudo mkdir -p /opt/bootstrap
 
-sudo tee /opt/bootstrap/playbook.yml > /dev/null <<'EOF'
+sudo tee /opt/bootstrap/playbook.yml > /dev/null <<PLAYBOOK_EOF
 ---
-- name: Prepare node and install MicroK8s + ArgoCD
+- name: Prepare node and install MicroK8s + ArgoCD + External Secrets Operator
   hosts: localhost
   connection: local
   become: true
+
+  vars:
+    instance_dns: "$INSTANCE_DNS"
+    doppler_token: "$DOPPLER_TOKEN"
 
   tasks:
     - name: Update apt cache and upgrade packages
@@ -96,9 +102,33 @@ sudo tee /opt/bootstrap/playbook.yml > /dev/null <<'EOF'
         executable: /bin/bash
 
     - name: Install ArgoCD manifests
-      ansible.builtin.command: microk8s kubectl create -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+      ansible.builtin.command: microk8s kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
 
-    - name: Create ArgoCD ingress
+    - name: Create purely namespace
+      ansible.builtin.shell: |
+        set -e
+        microk8s kubectl create namespace purely --dry-run=client -o yaml | microk8s kubectl apply -f -
+      args:
+        executable: /bin/bash
+
+    - name: Install External Secrets Operator
+      ansible.builtin.command: microk8s kubectl apply -f https://github.com/external-secrets/external-secrets/releases/latest/download/external-secrets.yaml
+
+    - name: Wait for External Secrets Operator webhook
+      ansible.builtin.command: microk8s kubectl -n external-secrets rollout status deploy/external-secrets-webhook --timeout=120s
+      changed_when: false
+
+    - name: Create Doppler token secret for ESO
+      ansible.builtin.shell: |
+        set -e
+        microk8s kubectl create secret generic doppler-token \
+          --namespace external-secrets \
+          --from-literal=dopplerToken={{ doppler_token }} \
+          --dry-run=client -o yaml | microk8s kubectl apply -f -
+      args:
+        executable: /bin/bash
+
+    - name: Create ArgoCD ingress with domain
       ansible.builtin.shell: |
         cat <<'INGRESS' | microk8s kubectl apply -f -
         apiVersion: networking.k8s.io/v1
@@ -109,8 +139,10 @@ sudo tee /opt/bootstrap/playbook.yml > /dev/null <<'EOF'
           annotations:
             nginx.ingress.kubernetes.io/backend-protocol: "HTTPS"
         spec:
+          ingressClassName: nginx
           rules:
-            - http:
+            - host: argocd.{{ instance_dns }}
+              http:
                 paths:
                   - path: /
                     pathType: Prefix
@@ -127,7 +159,7 @@ sudo tee /opt/bootstrap/playbook.yml > /dev/null <<'EOF'
       ansible.builtin.command: microk8s kubectl -n argocd rollout status deploy/argocd-server --timeout=600s
       changed_when: false
 
-    - name: Show ArgoCD initial admin password
+    - name: Get ArgoCD initial admin password
       ansible.builtin.shell: |
         set -e
         PASS_B64=$(microk8s kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath='{.data.password}')
@@ -140,9 +172,97 @@ sudo tee /opt/bootstrap/playbook.yml > /dev/null <<'EOF'
     - name: Print ArgoCD credentials
       ansible.builtin.debug:
         msg:
-          - "ArgoCD URL: https://$(curl -s http://169.254.169.254/latest/meta-data/public-ipv4)"
+          - "ArgoCD URL: https://argocd.{{ instance_dns }}"
           - "Username: admin"
           - "Password: {{ argocd_password.stdout }}"
-EOF
+
+    - name: Create ArgoCD Application for purely
+      ansible.builtin.shell: |
+        cat <<'EOF' | microk8s kubectl apply -f -
+        apiVersion: argoproj.io/v1alpha1
+        kind: Application
+        metadata:
+          name: purely
+          namespace: argocd
+        spec:
+          project: default
+          source:
+            repoURL: https://github.com/d4niy4l/microservices-deployment.git
+            targetRevision: gitops
+            path: kubernetes
+          destination:
+            server: https://kubernetes.default.svc
+            namespace: purely
+          syncPolicy:
+            automated:
+              prune: true
+              selfHeal: true
+            syncOptions:
+              - CreateNamespace=false
+        EOF
+      args:
+        executable: /bin/bash
+      register: argocd_app
+      changed_when: "'created' in argocd_app.stdout or 'configured' in argocd_app.stdout"
+
+    - name: Apply app ingress with domain
+      ansible.builtin.shell: |
+        cat <<'EOF' | microk8s kubectl apply -f -
+        apiVersion: networking.k8s.io/v1
+        kind: Ingress
+        metadata:
+          name: purely-ingress
+          namespace: purely
+          annotations:
+            nginx.ingress.kubernetes.io/ssl-redirect: "false"
+        spec:
+          ingressClassName: nginx
+          rules:
+            - host: {{ instance_dns }}
+              http:
+                paths:
+                  - path: /
+                    pathType: Prefix
+                    backend:
+                      service:
+                        name: frontend
+                        port:
+                          number: 80
+            - host: api.{{ instance_dns }}
+              http:
+                paths:
+                  - path: /
+                    pathType: Prefix
+                    backend:
+                      service:
+                        name: api-gateway
+                        port:
+                          number: 8080
+            - host: eureka.{{ instance_dns }}
+              http:
+                paths:
+                  - path: /
+                    pathType: Prefix
+                    backend:
+                      service:
+                        name: service-registry
+                        port:
+                          number: 8761
+        EOF
+      args:
+        executable: /bin/bash
+      register: app_ingress
+      changed_when: "'created' in app_ingress.stdout or 'configured' in app_ingress.stdout"
+
+    - name: Show final access URLs
+      ansible.builtin.debug:
+        msg:
+          - "==========================================="
+          - "App URL: http://{{ instance_dns }}"
+          - "API URL: http://api.{{ instance_dns }}"
+          - "Eureka URL: http://eureka.{{ instance_dns }}"
+          - "ArgoCD URL: https://argocd.{{ instance_dns }}"
+          - "==========================================="
+PLAYBOOK_EOF
 
 ansible-playbook -i localhost, -c local /opt/bootstrap/playbook.yml

@@ -5,7 +5,7 @@ resource "aws_instance" "k8s_node" {
   vpc_security_group_ids      = [aws_security_group.k8s_node.id]
   key_name                    = var.ssh_key_name
   associate_public_ip_address = true
-  user_data                   = file("${path.module}/user_data.sh.tftpl")
+  user_data                   = templatefile("${path.module}/user_data.sh.tftpl", { doppler_token = var.doppler_token })
   user_data_replace_on_change = true
 
   metadata_options {

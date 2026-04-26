@@ -1,0 +1,22 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: purely
+  namespace: argocd
+  labels:
+    app: purely
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/d4niy4l/microservices-deployment.git
+    targetRevision: gitops
+    path: kubernetes
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: purely
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=false

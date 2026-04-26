@@ -1,22 +1,14 @@
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: frontend-ingress
+  name: purely-ingress
   namespace: purely
   annotations:
-    # cert-manager.io/cluster-issuer: selfsigned-issuer
-    nginx.ingress.kubernetes.io/rewrite-target: /
     nginx.ingress.kubernetes.io/ssl-redirect: "false"
 spec:
-  ingressClassName: nginx 
-  # tls:
-  #   - hosts:
-  #       - purely.com
-  #       - eureka.purely.com
-  #       - api.purely.com
-  #     secretName: purely-tls
+  ingressClassName: nginx
   rules:
-    - host: purely.com 
+    - host: REPLACE_DOMAIN
       http:
         paths:
           - path: /
@@ -26,19 +18,8 @@ spec:
                 name: frontend
                 port:
                   number: 80
-    
-    - host: eureka.purely.com 
-      http:
-        paths:
-          - path: /
-            pathType: Prefix
-            backend:
-              service:
-                name: service-registry
-                port:
-                  number: 8761
 
-    - host: api.purely.com 
+    - host: api.REPLACE_DOMAIN
       http:
         paths:
           - path: /
@@ -48,3 +29,14 @@ spec:
                 name: api-gateway
                 port:
                   number: 8080
+
+    - host: eureka.REPLACE_DOMAIN
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: service-registry
+                port:
+                  number: 8761
