@@ -12,14 +12,14 @@ spec:
     - http:
         paths:
           - path: /api(/|$)(.*)
-            pathType: Prefix
+            pathType: ImplementationSpecific
             backend:
               service:
                 name: api-gateway
                 port:
                   number: 8080
           - path: /eureka(/|$)(.*)
-            pathType: Prefix
+            pathType: ImplementationSpecific
             backend:
               service:
                 name: service-registry
