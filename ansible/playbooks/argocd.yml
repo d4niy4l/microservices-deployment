@@ -1,0 +1,63 @@
+---
+- name: Install ArgoCD on MicroK8s
+  hosts: k8s
+  become: true
+
+  tasks:
+    - name: Wait for MicroK8s to be ready
+      ansible.builtin.command: microk8s status --wait-ready
+      changed_when: false
+
+    - name: Create ArgoCD namespace
+      ansible.builtin.command: microk8s kubectl create namespace argocd
+      register: argocd_namespace
+      failed_when: argocd_namespace.rc != 0 and "AlreadyExists" not in argocd_namespace.stderr
+      changed_when: "'created' in argocd_namespace.stdout"
+
+    - name: Install ArgoCD manifests
+      ansible.builtin.command: microk8s kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+      register: argocd_apply
+      changed_when: "'configured' in argocd_apply.stdout or 'created' in argocd_apply.stdout"
+
+    - name: Expose ArgoCD via ingress on HTTPS 443
+      ansible.builtin.shell: |
+        cat <<'EOF' | microk8s kubectl apply -f -
+        apiVersion: networking.k8s.io/v1
+        kind: Ingress
+        metadata:
+          name: argocd-server-ingress
+          namespace: argocd
+          annotations:
+            nginx.ingress.kubernetes.io/backend-protocol: "HTTPS"
+        spec:
+          rules:
+            - http:
+                paths:
+                  - path: /
+                    pathType: Prefix
+                    backend:
+                      service:
+                        name: argocd-server
+                        port:
+                          number: 443
+        EOF
+      args:
+        executable: /bin/bash
+      register: argocd_ingress
+      changed_when: "'created' in argocd_ingress.stdout or 'configured' in argocd_ingress.stdout"
+
+    - name: Wait for ArgoCD server deployment to be available
+      ansible.builtin.command: microk8s kubectl -n argocd rollout status deploy/argocd-server --timeout=600s
+      changed_when: false
+
+    - name: Get ArgoCD initial admin password
+      ansible.builtin.command: microk8s kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath={.data.password}
+      register: argocd_password_b64
+      changed_when: false
+
+    - name: Show ArgoCD access details
+      ansible.builtin.debug:
+        msg:
+          - "ArgoCD URL: https://{{ inventory_hostname }}"
+          - "Username: admin"
+          - "Password: {{ argocd_password_b64.stdout | b64decode }}"

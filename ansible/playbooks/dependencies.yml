@@ -1,0 +1,47 @@
+---
+- name: Install host dependencies for single-node Kubernetes
+  hosts: k8s
+  become: true
+
+  tasks:
+    - name: Update apt cache and upgrade packages
+      ansible.builtin.apt:
+        update_cache: true
+        upgrade: dist
+
+    - name: Install required packages
+      ansible.builtin.apt:
+        name:
+          - apt-transport-https
+          - ca-certificates
+          - curl
+          - gnupg
+          - lsb-release
+          - software-properties-common
+          - net-tools
+          - jq
+          - conntrack
+          - socat
+          - iptables
+          - docker.io
+          - containerd
+          - snapd
+        state: present
+
+    - name: Ensure Docker service is enabled and running
+      ansible.builtin.service:
+        name: docker
+        state: started
+        enabled: true
+
+    - name: Ensure containerd service is enabled and running
+      ansible.builtin.service:
+        name: containerd
+        state: started
+        enabled: true
+
+    - name: Add SSH user to docker group
+      ansible.builtin.user:
+        name: "{{ ansible_user }}"
+        groups: docker
+        append: true

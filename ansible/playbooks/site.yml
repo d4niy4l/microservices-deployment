@@ -1,0 +1,9 @@
+---
+- name: Provision single-node Kubernetes and ArgoCD
+  import_playbook: dependencies.yml
+
+- name: Install MicroK8s
+  import_playbook: cluster.yml
+
+- name: Install ArgoCD
+  import_playbook: argocd.yml

@@ -41,3 +41,21 @@ target/
 #WORKFLOWS
 .secrets
 charts/**/*values*.yaml
+
+# TERRAFORM
+**/.terraform/*
+*.tfstate
+*.tfstate.*
+crash.log
+crash.*.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+terraform.tfvars
+*.auto.tfvars
+*.auto.tfvars.json
+
+# ANSIBLE
+*.retry
+ansible/inventory/hosts.ini
