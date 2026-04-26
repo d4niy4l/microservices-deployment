@@ -5,10 +5,11 @@ metadata:
   namespace: purely
   annotations:
     nginx.ingress.kubernetes.io/ssl-redirect: "false"
+    argocd.argoproj.io/sync-options: IgnoreExtraneous=true
 spec:
   ingressClassName: nginx
   rules:
-    - host: REPLACE_DOMAIN
+    - host: PLACEHOLDER_DOMAIN
       http:
         paths:
           - path: /
@@ -19,7 +20,7 @@ spec:
                 port:
                   number: 80
 
-    - host: api.REPLACE_DOMAIN
+    - host: api.PLACEHOLDER_DOMAIN
       http:
         paths:
           - path: /
@@ -30,7 +31,7 @@ spec:
                 port:
                   number: 8080
 
-    - host: eureka.REPLACE_DOMAIN
+    - host: eureka.PLACEHOLDER_DOMAIN
       http:
         paths:
           - path: /
