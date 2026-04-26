@@ -24,13 +24,18 @@ output "ec2_instance_id" {
 }
 
 output "ec2_public_ip" {
-  description = "Public IP of the Kubernetes EC2 node."
-  value       = aws_instance.k8s_node.public_ip
+  description = "Elastic IP attached to the Kubernetes EC2 node."
+  value       = aws_eip.k8s_node.public_ip
 }
 
 output "ec2_public_dns" {
-  description = "Public DNS of the Kubernetes EC2 node."
-  value       = aws_instance.k8s_node.public_dns
+  description = "Public DNS of the Elastic IP."
+  value       = aws_eip.k8s_node.public_dns
+}
+
+output "eip_allocation_id" {
+  description = "Allocation ID of the Elastic IP (useful for re-association)."
+  value       = aws_eip.k8s_node.id
 }
 
 output "selected_ami" {
