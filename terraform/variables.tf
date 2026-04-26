@@ -37,11 +37,6 @@ variable "instance_type" {
   description = "EC2 instance type for Kubernetes node."
   type        = string
   default     = "t3.medium"
-
-  validation {
-    condition     = can(regex("^t3\\.(medium|large)$", var.instance_type))
-    error_message = "Instance type must be either t3.medium or t3.large."
-  }
 }
 
 variable "ssh_key_name" {
