@@ -1,0 +1,175 @@
+---
+- name: Configure Kubernetes master node
+  hosts: master
+  become: true
+
+  vars:
+    doppler_token: "{{ lookup('env', 'DOPPLER_TOKEN') }}"
+
+  environment:
+    PATH: "/snap/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+
+  tasks:
+    - name: Wait for MicroK8s to be ready
+      ansible.builtin.shell: microk8s status --wait-ready
+      args:
+        executable: /bin/bash
+      changed_when: false
+
+    - name: Enable MicroK8s addons
+      ansible.builtin.shell: microk8s enable dns hostpath-storage ingress
+      args:
+        executable: /bin/bash
+      register: microk8s_enable
+      changed_when: "'is already enabled' not in microk8s_enable.stdout"
+
+    - name: Create ArgoCD namespace
+      ansible.builtin.shell: |
+        microk8s kubectl create namespace argocd --dry-run=client -o yaml | microk8s kubectl apply -f -
+      args:
+        executable: /bin/bash
+
+    - name: Create purely namespace
+      ansible.builtin.shell: |
+        microk8s kubectl create namespace purely --dry-run=client -o yaml | microk8s kubectl apply -f -
+      args:
+        executable: /bin/bash
+
+    - name: Install ArgoCD manifests
+      ansible.builtin.shell: microk8s kubectl apply --server-side --force-conflicts -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+      args:
+        executable: /bin/bash
+      register: argocd_apply
+      changed_when: "'created' in argocd_apply.stdout or 'configured' in argocd_apply.stdout"
+
+    - name: Install Doppler Secrets Operator
+      ansible.builtin.shell: microk8s kubectl apply -f https://github.com/DopplerHQ/kubernetes-operator/releases/latest/download/recommended.yaml
+      args:
+        executable: /bin/bash
+      register: dso_install
+      changed_when: "'created' in dso_install.stdout or 'configured' in dso_install.stdout"
+
+    - name: Wait for Doppler Secrets Operator to be ready
+      ansible.builtin.shell: |
+        microk8s kubectl -n doppler-system rollout status deploy/doppler-controller-manager --timeout=180s || true
+      args:
+        executable: /bin/bash
+      changed_when: false
+
+    - name: Create Doppler token secret in purely namespace
+      ansible.builtin.shell: |
+        set -e
+        microk8s kubectl create secret generic doppler-token \
+          --namespace purely \
+          --from-literal=token={{ doppler_token }} \
+          --dry-run=client -o yaml | microk8s kubectl apply -f -
+      args:
+        executable: /bin/bash
+
+    - name: Expand NodePort range to include 8080
+      ansible.builtin.shell: |
+        grep -q 'service-node-port-range' /var/snap/microk8s/current/args/kube-apiserver || \
+          echo '--service-node-port-range=80-32767' >> /var/snap/microk8s/current/args/kube-apiserver
+        microk8s stop
+        microk8s start
+      args:
+        executable: /bin/bash
+      changed_when: true
+
+    - name: Wait for MicroK8s to be ready after restart
+      ansible.builtin.shell: microk8s status --wait-ready
+      args:
+        executable: /bin/bash
+      changed_when: false
+
+    - name: Wait for all pods to stabilize after restart
+      ansible.builtin.shell: sleep 15
+      changed_when: false
+
+    - name: Configure ArgoCD to run in insecure HTTP mode
+      ansible.builtin.shell: |
+        microk8s kubectl patch configmap argocd-cmd-params-cm -n argocd --type merge -p '{"data":{"server.insecure":"true"}}'
+      args:
+        executable: /bin/bash
+      register: argocd_insecure
+      changed_when: "'patched' in argocd_insecure.stdout or 'configured' in argocd_insecure.stdout"
+
+    - name: Restart ArgoCD server to pick up insecure mode
+      ansible.builtin.shell: microk8s kubectl rollout restart deploy/argocd-server -n argocd
+      args:
+        executable: /bin/bash
+      changed_when: true
+
+    - name: Patch ArgoCD service to NodePort 8080
+      ansible.builtin.shell: |
+        microk8s kubectl patch svc argocd-server -n argocd -p '{"spec":{"type":"NodePort","ports":[{"port":80,"targetPort":8080,"nodePort":8080,"protocol":"TCP","name":"http"}]}}'
+      args:
+        executable: /bin/bash
+      register: argocd_patch
+      changed_when: "'patched' in argocd_patch.stdout"
+
+    - name: Wait for ArgoCD server deployment to be available
+      ansible.builtin.shell: microk8s kubectl -n argocd rollout status deploy/argocd-server --timeout=600s
+      args:
+        executable: /bin/bash
+      changed_when: false
+
+    - name: Get ArgoCD initial admin password
+      ansible.builtin.shell: microk8s kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath={.data.password}
+      register: argocd_password_b64
+      changed_when: false
+
+    - name: Create ArgoCD Application for purely
+      ansible.builtin.shell: |
+        cat <<'EOF' | microk8s kubectl apply -f -
+        apiVersion: argoproj.io/v1alpha1
+        kind: Application
+        metadata:
+          name: purely
+          namespace: argocd
+        spec:
+          project: default
+          source:
+            repoURL: https://github.com/d4niy4l/microservices-deployment.git
+            targetRevision: gitops
+            path: kubernetes
+          destination:
+            server: https://kubernetes.default.svc
+            namespace: purely
+          ignoreDifferences:
+            - group: networking.k8s.io
+              kind: Ingress
+              jsonPointers:
+                - /spec/rules
+          syncPolicy:
+            automated:
+              prune: true
+              selfHeal: true
+            syncOptions:
+              - CreateNamespace=false
+        EOF
+      args:
+        executable: /bin/bash
+      register: argocd_app
+      changed_when: "'created' in argocd_app.stdout or 'configured' in argocd_app.stdout"
+
+    - name: Write kubeconfig for SSH user
+      ansible.builtin.shell: |
+        set -e
+        mkdir -p /home/{{ ansible_user }}/.kube
+        microk8s config > /home/{{ ansible_user }}/.kube/config
+        chown {{ ansible_user }}:{{ ansible_user }} /home/{{ ansible_user }}/.kube/config
+        chmod 0600 /home/{{ ansible_user }}/.kube/config
+      args:
+        executable: /bin/bash
+
+    - name: Show access details
+      ansible.builtin.debug:
+        msg:
+          - "==========================================="
+          - "ArgoCD URL: http://{{ inventory_hostname }}:8080"
+          - "ArgoCD Username: admin"
+          - "ArgoCD Password: {{ argocd_password_b64.stdout | b64decode }}"
+          - "App URL: http://{{ inventory_hostname }}"
+          - "API URL: http://{{ inventory_hostname }}/api"
+          - "==========================================="

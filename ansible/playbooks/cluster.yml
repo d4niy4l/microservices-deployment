@@ -1,6 +1,6 @@
 ---
 - name: Install and configure MicroK8s
-  hosts: k8s
+  hosts: master
   become: true
 
   tasks:

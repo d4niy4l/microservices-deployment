@@ -22,7 +22,7 @@ fi
 PUBLIC_IP="$(cd "${TF_DIR}" && terraform output -raw ec2_public_ip)"
 
 cat > "${HOSTS_FILE}" <<EOF
-[k8s]
+[master]
 ${PUBLIC_IP} ansible_user=${SSH_USER} ansible_ssh_private_key_file=${SSH_KEY_PATH} ansible_python_interpreter=/usr/bin/python3
 EOF
 
