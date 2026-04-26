@@ -5,7 +5,15 @@ exec > >(tee /var/log/user-data.log | logger -t user-data) 2>&1
 export DEBIAN_FRONTEND=noninteractive
 
 sudo apt-get update -y
-sudo apt-get install -y ansible python3-pip
+sudo apt-get install -y software-properties-common python3-pip python3-apt curl
+
+if ! command -v ansible-playbook >/dev/null 2>&1; then
+  sudo apt-get install -y ansible-core || true
+fi
+
+if ! command -v ansible-playbook >/dev/null 2>&1; then
+  sudo pip3 install --break-system-packages "ansible-core>=2.16,<2.19"
+fi
 
 sudo mkdir -p /opt/bootstrap
 
@@ -88,7 +96,7 @@ sudo tee /opt/bootstrap/playbook.yml > /dev/null <<'EOF'
         executable: /bin/bash
 
     - name: Install ArgoCD manifests
-      ansible.builtin.command: microk8s kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+      ansible.builtin.command: microk8s kubectl create -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
 
     - name: Create ArgoCD ingress
       ansible.builtin.shell: |
@@ -137,4 +145,4 @@ sudo tee /opt/bootstrap/playbook.yml > /dev/null <<'EOF'
           - "Password: {{ argocd_password.stdout }}"
 EOF
 
-ansible-playbook /opt/bootstrap/playbook.yml
+ansible-playbook -i localhost, -c local /opt/bootstrap/playbook.yml

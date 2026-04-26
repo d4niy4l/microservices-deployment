@@ -6,6 +6,7 @@ resource "aws_instance" "k8s_node" {
   key_name                    = var.ssh_key_name
   associate_public_ip_address = true
   user_data                   = file("${path.module}/user_data.sh.tftpl")
+  user_data_replace_on_change = true
 
   metadata_options {
     http_endpoint = "enabled"
