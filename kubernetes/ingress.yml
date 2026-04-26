@@ -46,13 +46,14 @@ metadata:
   namespace: purely
   annotations:
     nginx.ingress.kubernetes.io/ssl-redirect: "false"
+    nginx.ingress.kubernetes.io/rewrite-target: /$2
 spec:
   ingressClassName: nginx
   rules:
     - http:
         paths:
-          - path: /eureka
-            pathType: Prefix
+          - path: /eureka(/|$)(.*)
+            pathType: ImplementationSpecific
             backend:
               service:
                 name: service-registry
