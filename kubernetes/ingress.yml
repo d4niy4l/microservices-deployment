@@ -1,22 +1,28 @@
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: frontend-ingress
+  name: eureka-ingress
   namespace: purely
   annotations:
     nginx.ingress.kubernetes.io/ssl-redirect: "false"
+    nginx.ingress.kubernetes.io/use-regex: "true"
+    nginx.ingress.kubernetes.io/rewrite-target: /$2
+    nginx.ingress.kubernetes.io/configuration-snippet: |
+      sub_filter '<head>' '<head><base href="/eureka/">';
+      sub_filter_once on;
+      sub_filter_types text/html;
 spec:
   ingressClassName: nginx
   rules:
     - http:
         paths:
-          - path: /
-            pathType: Prefix
+          - path: /eureka(/|$)(.*)
+            pathType: ImplementationSpecific
             backend:
               service:
-                name: frontend
+                name: service-registry
                 port:
-                  number: 80
+                  number: 8761
 ---
 apiVersion: networking.k8s.io/v1
 kind: Ingress
@@ -43,21 +49,19 @@ spec:
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: eureka-ingress
+  name: frontend-ingress
   namespace: purely
   annotations:
     nginx.ingress.kubernetes.io/ssl-redirect: "false"
-    nginx.ingress.kubernetes.io/rewrite-target: /$2
-    nginx.ingress.kubernetes.io/use-regex: "true"
 spec:
   ingressClassName: nginx
   rules:
     - http:
         paths:
-          - path: /eureka(/|$)(.*)
-            pathType: ImplementationSpecific
+          - path: /
+            pathType: Prefix
             backend:
               service:
-                name: service-registry
+                name: frontend
                 port:
-                  number: 8761
+                  number: 80
