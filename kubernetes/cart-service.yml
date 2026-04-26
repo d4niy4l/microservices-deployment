@@ -62,7 +62,7 @@ spec:
               valueFrom:
                 configMapKeyRef:
                   name: purely-config
-                  key: SERVICE_REGISTRY_HOSTNAME
+                  key: CART_SERVICE_HOSTNAME
 ---
 apiVersion: v1
 kind: Service

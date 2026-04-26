@@ -114,6 +114,12 @@
         executable: /bin/bash
       changed_when: false
 
+    - name: Delete ArgoCD ingress to prevent conflict with frontend
+      ansible.builtin.shell: microk8s kubectl delete ingress --all -n argocd --ignore-not-found
+      args:
+        executable: /bin/bash
+      changed_when: true
+
     - name: Get ArgoCD initial admin password
       ansible.builtin.shell: microk8s kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath={.data.password}
       register: argocd_password_b64
