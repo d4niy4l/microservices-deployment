@@ -1,9 +1,10 @@
 ---
-- name: Provision single-node Kubernetes and ArgoCD
-  import_playbook: dependencies.yml
-
-- name: Install MicroK8s
-  import_playbook: cluster.yml
-
-- name: Install ArgoCD
-  import_playbook: argocd.yml
+# site.yml - Main playbook entry point
+#
+# Usage:
+#   ansible-playbook playbooks/site.yml -e "doppler_token=<your-token>"
+#
+# Or run individually:
+#   ansible-playbook playbooks/cluster.yml
+#   ansible-playbook playbooks/configure-master.yml -e "doppler_token=<token>"
+#   ansible-playbook playbooks/configure-workers.yml

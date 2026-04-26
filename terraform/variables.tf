@@ -90,9 +90,3 @@ variable "argocd_ingress_cidr" {
   type        = string
   default     = "0.0.0.0/0"
 }
-
-variable "doppler_token" {
-  description = "Doppler service token for External Secrets Operator. Create at: doppler.com → project settings → service tokens"
-  type        = string
-  sensitive   = true
-}

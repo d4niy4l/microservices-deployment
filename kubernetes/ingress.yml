@@ -5,13 +5,26 @@ metadata:
   namespace: purely
   annotations:
     nginx.ingress.kubernetes.io/ssl-redirect: "false"
-    argocd.argoproj.io/sync-options: IgnoreExtraneous=true
+    nginx.ingress.kubernetes.io/rewrite-target: /$2
 spec:
   ingressClassName: nginx
   rules:
-    - host: PLACEHOLDER_DOMAIN
-      http:
+    - http:
         paths:
+          - path: /api(/|$)(.*)
+            pathType: Prefix
+            backend:
+              service:
+                name: api-gateway
+                port:
+                  number: 8080
+          - path: /eureka(/|$)(.*)
+            pathType: Prefix
+            backend:
+              service:
+                name: service-registry
+                port:
+                  number: 8761
           - path: /
             pathType: Prefix
             backend:
@@ -19,25 +32,3 @@ spec:
                 name: frontend
                 port:
                   number: 80
-
-    - host: api.PLACEHOLDER_DOMAIN
-      http:
-        paths:
-          - path: /
-            pathType: Prefix
-            backend:
-              service:
-                name: api-gateway
-                port:
-                  number: 8080
-
-    - host: eureka.PLACEHOLDER_DOMAIN
-      http:
-        paths:
-          - path: /
-            pathType: Prefix
-            backend:
-              service:
-                name: service-registry
-                port:
-                  number: 8761
