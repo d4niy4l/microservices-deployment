@@ -24,7 +24,7 @@ function Footer() {
                 <div>
                     <h1>Contact Us</h1>
                     <div>
-                        <p><span><i className="fa fa-map-marker"></i></span>No 123, Lotus strret, Colombo</p>
+                        <p><span><i className="fa fa-map-marker"></i></span>No 123, FAST NUCES, Colombo</p>
                         <p><span><i className="fa fa-phone"></i></span>+94 741258963, 9632587412</p>
                         <p><span><i className="fa fa-envelope"></i></span>bitebliss@abc.com</p>
                     </div>
